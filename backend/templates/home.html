@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Homepage</h1>
+
+<ul class="user-list">
+    {% for user in users %}
+    <li>
+        <a href="{{ url_for('characters_of_user', username=user.username) }}">{{ user.username }}</a>
+
+        <form action="{{ url_for('delete_user', username=user.username) }}" method="post">
+        <input type="submit" value="Delete">
+        </form>
+
+    </li>
+    {% endfor %}
+</ul>
+
+
+<form action="{{ url_for('create_user') }}" method="post">
+    <label for="create_user">Add new User</label><br>
+    <input type="text" id="create_user" name="create_user" placeholder="Create new User" required><br>
+    <input type="submit" value="Create User"><br>
+</form>
+
+
+{% endblock %}

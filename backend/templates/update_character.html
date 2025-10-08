@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Update Character</h1>
+
+<form method="POST" action="{{url_for('update_character', username=username, char_name = character.char_name)}}">
+
+    <div class="form-group">
+        <label for="char_name">Name:</label><br>
+        <input type="text" id="char_name" name="char_name" value="{{character.char_name}}" required><br>
+    </div>
+
+</form>
+
+<a href="{{ url_for('character_of_user', username=username) }}">Return to user page</a>
+
+{% endblock %}
