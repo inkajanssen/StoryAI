@@ -1,3 +1,7 @@
 SQLAlchemy~=2.0.43
 python-dotenv~=1.1.1
 Flask~=3.1.2
+typing_extensions~=4.15.0
+langchain~=0.3.27
+langchain-core~=0.3.78
+langgraph~=0.6.9
