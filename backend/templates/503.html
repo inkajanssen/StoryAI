@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="503">
+  <h1 class="banner">503 - Chatbot not found</h1>
+  <p>Sorry, but the chatbot you were trying to chat with could not be found.</p>
+  <a href="{{ url_for('home')}}" class="backlink">Return to homepage</a>
+</div>
+
+{% endblock %}

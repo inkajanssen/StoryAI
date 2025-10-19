@@ -29,7 +29,7 @@ class Character(db.Model):
     creator:Mapped["User"] = relationship(back_populates="created_chars")
 
     chat_sessions:Mapped[List["ChatHistory"]] = relationship(back_populates="through_char",
-                                               clazy="dynamic", cascade="all, delete-orphan")
+                                               lazy="select", cascade="all, delete-orphan")
 
     def __str__(self):
         return f"Name: {self.name} has following skills:"

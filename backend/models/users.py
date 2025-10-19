@@ -22,7 +22,7 @@ class User(db.Model):
     created_chars:Mapped[List["Character"]] = relationship(back_populates="creator",
                                                            lazy= "dynamic", cascade= "all, delete-orphan")
     chats:Mapped["ChatHistory"] = relationship(back_populates="chatted_with",
-                                               clazy="dynamic", cascade="all, delete-orphan")
+                                               lazy="select", cascade="all, delete-orphan")
     def __str__(self):
         return f"Username:{self.username} created following characters: {self.created_chars}"
 

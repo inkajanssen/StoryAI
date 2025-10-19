@@ -1,9 +1,15 @@
-from models import db, create_app, User, Character, ChatHistory
-from flask import render_template, request, flash, redirect, url_for, Flask
+from flask import render_template, request, flash, redirect, url_for
+from langchain_core.messages import HumanMessage
+from sqlalchemy import select
+
+from models import db, create_app, User, Character, ChatHistory, create_chatbot
 
 # Call create app from db.py
 app = create_app()
 
+# Create chatbot
+
+chatbot_app = create_chatbot()
 
 # Import and create objects of the data managers
 from data import CharacterManager, UserManager, ChatManager
@@ -81,6 +87,17 @@ def add_character(username):
     return redirect(url_for('characters_of_user', username=user.username))
 
 
+@app.route('/users/<string:username>/<string:char_name>', methods=['GET'])
+def char(username, char_name):
+    """
+    Show Char to update or delete it
+    """
+    user = db.session.query(User).filter_by(username=username).one_or_none()
+    character = db.session.query(Character).filter_by(char_name=char_name).one_or_none()
+
+    return render_template("char_display.html", character=character, user=user)
+
+
 @app.route('/users/<string:username>/characters/<string:char_name>/update', methods=['GET, POST'])
 def update_character(username, char_name):
     """
@@ -117,9 +134,109 @@ def delete_character(username, char_name):
     return redirect(url_for('characters_of_user', username=user.username))
 
 
+@app.route('/users/<string:username>/characters/<string:char_name>/chat', methods=['GET, POST'])
+def chat(username, char_name):
+    """
+    Chat with the AI
+    """
+
+    if chatbot_app is None:
+        return "Chatbot is unavailable.", 503
+
+    user = db.session.query(User).filter_by(username=username).one_or_none()
+    character = db.session.query(Character).filter_by(Character.char_name == char_name).one_or_none()
+
+    if not user or not character:
+        return "User or Character not found", 404
+
+    user_id = user.user_id
+    char_id = character.char_id
+
+    # Create thread id
+    thread_id = int(f"{user_id}{char_id}")
+    config = {"configurable": {"thread_id":thread_id}}
+
+    if request.method == 'POST':
+        # Get the message from user
+        message_content = request.form.get('message')
+
+        # Save the message from user
+        new_message = ChatHistory(
+            message=message_content,
+            role='character',
+            user_id=user_id,
+            char_id=char_id
+        )
+        db.session.add(new_message)
+
+        # Invoke AI response
+        input_message = [HumanMessage(content=message_content)]
+
+        response_state = chatbot_app.invoke(
+            input= {"messages": input_message},
+            config=config,
+            recursion_limit=5
+        )
+
+        ai_response_content = response_state["messages"][-1].content
+
+        # Save AI response
+        ai_message = ChatHistory(
+            message=ai_response_content,
+            role='ai',
+            user_id=user_id,
+            char_id=char_id
+        )
+        db.session.add(ai_message)
+
+        # Commit the exchange
+        db.session.commit()
+
+        return redirect(url_for('chat', username=username, char_name=char_name))
+
+    # Load messages for chat
+    chat_history = db.session.execute(
+        select(ChatHistory).filter_by(user_id=user_id, char_id=char_id).order_by(ChatHistory.created.asc())
+    ).scalars().all()
+
+    # If there is no message let AI begin
+    if not chat_history:
+        initial_message = [HumanMessage(content="Start the Story.")]
+
+        response_state = chatbot_app.invoke(
+            input={"messages": initial_message},
+            config=config,
+            recursion_limit=5
+        )
+
+        ai_response_content = response_state["messages"][-1].content
+
+        # Save AI response
+        ai_message = ChatHistory(
+            message=ai_response_content,
+            role='ai',
+            user_id=user_id,
+            char_id=char_id
+        )
+        db.session.add(ai_message)
+        db.session.commit()
+
+        chat_history = db.session.execute(
+            select(ChatHistory).filter_by(user_id=user_id, char_id=char_id).order_by(ChatHistory.created.asc())
+        ).scalars().all()
+
+
+    return render_template('chat.html', history=chat_history, username=username, char_name=char_name)
+
+
 @app.errorhandler(404)
 def page_not_found(e):
     return render_template('404.html'), 404
+
+
+@app.errorhandler(503)
+def chatbot_not_initialized(e):
+    return render_template('503.html'), 503
 
 
 if __name__ == "__main__":
