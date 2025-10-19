@@ -1,4 +1,4 @@
-from flask import render_template, request, flash, redirect, url_for
+from flask import render_template, request, flash, redirect, url_for, abort
 from langchain_core.messages import HumanMessage
 from sqlalchemy import select
 
@@ -106,6 +106,9 @@ def update_character(username, char_name):
     user = db.session.query(User).filter_by(username=username).one_or_none()
     character_to_update= user.created_chars.filter(Character.char_name == char_name).one_or_none()
 
+    if not user or not character_to_update:
+        abort(404)
+
     if request.method == 'POST':
         name = request.form.get('char_name').strip()
 
@@ -134,7 +137,7 @@ def delete_character(username, char_name):
     return redirect(url_for('characters_of_user', username=user.username))
 
 
-@app.route('/users/<string:username>/characters/<string:char_name>/chat', methods=['GET, POST'])
+@app.route('/users/<string:username>/characters/<string:char_name>/chat', methods=['GET', 'POST'])
 def chat(username, char_name):
     """
     Chat with the AI
@@ -144,7 +147,7 @@ def chat(username, char_name):
         return "Chatbot is unavailable.", 503
 
     user = db.session.query(User).filter_by(username=username).one_or_none()
-    character = db.session.query(Character).filter_by(Character.char_name == char_name).one_or_none()
+    character = db.session.query(Character).filter_by(char_name=char_name).one_or_none()
 
     if not user or not character:
         return "User or Character not found", 404
@@ -196,7 +199,10 @@ def chat(username, char_name):
 
     # Load messages for chat
     chat_history = db.session.execute(
-        select(ChatHistory).filter_by(user_id=user_id, char_id=char_id).order_by(ChatHistory.created.asc())
+        select(ChatHistory).where(
+            (ChatHistory.user_id==user_id),
+                        (ChatHistory.char_id==char_id)
+        ).order_by(ChatHistory.created.asc())
     ).scalars().all()
 
     # If there is no message let AI begin
@@ -222,7 +228,10 @@ def chat(username, char_name):
         db.session.commit()
 
         chat_history = db.session.execute(
-            select(ChatHistory).filter_by(user_id=user_id, char_id=char_id).order_by(ChatHistory.created.asc())
+            select(ChatHistory).where(
+                (ChatHistory.user_id == user_id),
+                (ChatHistory.char_id == char_id)
+            ).order_by(ChatHistory.created.asc())
         ).scalars().all()
 
 
@@ -231,7 +240,8 @@ def chat(username, char_name):
 
 @app.errorhandler(404)
 def page_not_found(e):
-    return render_template('404.html'), 404
+    error_message = str(e)
+    return render_template('404.html', error_message=error_message), 404
 
 
 @app.errorhandler(503)

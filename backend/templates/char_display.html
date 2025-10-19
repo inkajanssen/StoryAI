@@ -2,7 +2,7 @@
 {% block content %}
 <h1>{{ character.char_name }}</h1>
 
-    <form action="{{ url_for('update_character', username=username, char_name=character.char_name) }}" method="GET"><br>
+    <form action="{{ url_for('update_character', username=user.username, char_name=character.char_name) }}" method="GET"><br>
     <button type="submit" class="update-button">Update</button>
     <br>
     </form>
@@ -12,7 +12,7 @@
     </form>
 
     <form action="{{ url_for('chat', username=user.username, char_name=character.char_name) }}" method="post"><br>
-    <input type="submit" value="Delete Character"><br>
+    <input type="submit" value="Chat"><br>
     </form>
 
 {% endblock %}

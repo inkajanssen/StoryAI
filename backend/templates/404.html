@@ -4,6 +4,11 @@
 <div class="404">
   <h1 class="banner">404 - Page not found</h1>
   <p>Sorry, but the page you were trying to view does not exist.</p>
+
+  {%if error_message%}
+    <p> Details: {{error_message}}</p>
+  {%endif%}
+
   <a href="{{ url_for('home')}}" class="backlink">Return to homepage</a>
 </div>
 
