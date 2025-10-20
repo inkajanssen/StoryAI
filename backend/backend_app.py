@@ -1,6 +1,7 @@
-from flask import render_template, request, flash, redirect, url_for, abort
+from flask import render_template, request, flash, redirect, url_for, abort, jsonify
 from langchain_core.messages import HumanMessage
 from sqlalchemy import select
+from flask_cors import CORS
 
 from models import db, create_app, User, Character, ChatHistory, create_chatbot
 
@@ -8,8 +9,10 @@ from models import db, create_app, User, Character, ChatHistory, create_chatbot
 app = create_app()
 
 # Create chatbot
-
 chatbot_app = create_chatbot()
+
+#Add CORS
+CORS(app)
 
 # Import and create objects of the data managers
 from data import CharacterManager, UserManager, ChatManager
@@ -236,6 +239,114 @@ def chat(username, char_name):
 
 
     return render_template('chat.html', history=chat_history, username=username, char_name=char_name)
+
+
+@app.route('/users/<string:username>/characters/<string:char_name>/chat', methods=['GET'])
+def chat_using_streamlit(username, char_name):
+    """
+    Display chat with streamlit
+    """
+
+    user = db.session.query(User).filter_by(username=username).one_or_none()
+    character = db.session.query(Character).filter_by(char_name=char_name).one_or_none()
+
+    if not user or not character:
+        return "User or Character not found", 404
+
+    return render_template('chat.html', username=username, char_name=char_name)
+
+
+@app.route('/users/<string:username>/characters/<string:char_name>/chat', methods=['POST'])
+def send_chat_message(username, char_name):
+    """
+    Streamlit Endpoint for saving the messages
+    """
+    if chatbot_app is None:
+        return jsonify({"error": "Chatbot is unavailable."}), 503
+
+    user = db.session.query(User).filter_by(username=username).one_or_none()
+    character = db.session.query(Character).filter_by(char_name=char_name).one_or_none()
+
+    if not user or not character:
+        return jsonify({"error": "User or Character not found"}), 404
+
+    user_id = user.user_id
+    char_id = character.char_id
+
+    # Create thread id
+    thread_id = int(f"{user_id}{char_id}")
+    config = {"configurable": {"thread_id": thread_id}}
+
+    data = request.get_json()
+    message_content = data.get('message')
+
+    if not message_content:
+        return jsonify({"error": "Message could not be found."})
+
+    # Save the message from user
+    new_message = ChatHistory(
+        message=message_content,
+        role='character',
+        user_id=user_id,
+        char_id=char_id
+    )
+    db.session.add(new_message)
+
+    # Invoke AI response
+    input_message = [HumanMessage(content=message_content)]
+
+    response_state = chatbot_app.invoke(
+        input={"messages": input_message},
+        config=config,
+        recursion_limit=5
+    )
+
+    ai_response_content = response_state["messages"][-1].content
+
+    # Save AI response
+    ai_message = ChatHistory(
+        message=ai_response_content,
+        role='ai',
+        user_id=user_id,
+        char_id=char_id
+    )
+    db.session.add(ai_message)
+
+    # Commit the exchange
+    db.session.commit()
+
+    return jsonify({"sucess": True}), 200
+
+
+@app.route('/users/<string:username>/characters/<string:char_name>/history', methods=['GET'])
+def get_chat_history(username, char_name):
+    """
+    Create an endpoint with a json for streamlit to get the chats history
+    """
+    user = db.session.query(User).filter_by(username=username).one_or_none()
+    character = db.session.query(Character).filter_by(char_name=char_name).one_or_none()
+
+    if not user or not character:
+        return {"error": "User or Character not found"}, 404
+
+    user_id = user.user_id
+    char_id = character.char_id
+
+    # Load chat history
+    chat_history = db.session.execute(
+        select(ChatHistory).where(
+            (ChatHistory.user_id == user_id),
+            (ChatHistory.char_id == char_id)
+        ).order_by(ChatHistory.created.asc())
+    ).scalars().all()
+
+    # Convert to JSON
+    history_json = [
+        {"role": msg.role, "message": msg.message}
+        for msg in chat_history
+    ]
+
+    return jsonify(history_json)
 
 
 @app.errorhandler(404)

@@ -1,8 +1,15 @@
 {% extends "base.html" %}
 {% block content %}
-<h1>Chat with {{ character.char_name }}</h1>
+<h1>Chat with {{ char_name }}</h1>
 
+<a href="{{url_for('char', username=username, char_name=char_name)}}"> Back to character</a>
 
-
+<iframe
+    id="chat_iframe"
+    class="chat_container"
+    src="http://localhost:8501/?username={{ username }}&char_name={{ char_name }}&embed=true"
+    style="display:none;"
+    onload="document.getElementById('loading').style.display='none'; this.style.display='block';">
+</iframe>
 
 {% endblock %}

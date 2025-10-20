@@ -11,7 +11,7 @@
     <input type="submit" value="Delete Character"><br>
     </form>
 
-    <form action="{{ url_for('chat', username=user.username, char_name=character.char_name) }}" method="post"><br>
+    <form action="{{ url_for('chat_using_streamlit', username=user.username, char_name=character.char_name) }}" method="post"><br>
     <input type="submit" value="Chat"><br>
     </form>
 
