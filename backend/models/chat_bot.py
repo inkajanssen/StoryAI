@@ -42,6 +42,7 @@ system_prompt = (
             "Your task is to create a story for the user and use their answer to further the story."
             "Keep your responses engaging and challenge the user with choices."
             "Your first message is the beginning of a story in 500 characters or less."
+            "**Respond in the {language} language.**"
 )
 
 
@@ -55,7 +56,7 @@ prompt_template = ChatPromptTemplate.from_messages(
 
 # Define a trimmer for history managment
 trimmer = trim_messages(
-    max_tokens=65,
+    max_tokens=2000,
     strategy="last",
     token_counter=model,
     include_system=True,
@@ -79,7 +80,6 @@ def create_chatbot():
 
     workflow.add_edge(START, "model")
     workflow.add_node("model", call_model)
-    workflow.add_edge("model", "model")
 
     memory = MemorySaver()
     return workflow.compile(checkpointer=memory)

@@ -140,107 +140,6 @@ def delete_character(username, char_name):
     return redirect(url_for('characters_of_user', username=user.username))
 
 
-@app.route('/users/<string:username>/characters/<string:char_name>/chat', methods=['GET', 'POST'])
-def chat(username, char_name):
-    """
-    Chat with the AI
-    """
-
-    if chatbot_app is None:
-        return "Chatbot is unavailable.", 503
-
-    user = db.session.query(User).filter_by(username=username).one_or_none()
-    character = db.session.query(Character).filter_by(char_name=char_name).one_or_none()
-
-    if not user or not character:
-        return "User or Character not found", 404
-
-    user_id = user.user_id
-    char_id = character.char_id
-
-    # Create thread id
-    thread_id = int(f"{user_id}{char_id}")
-    config = {"configurable": {"thread_id":thread_id}}
-
-    if request.method == 'POST':
-        # Get the message from user
-        message_content = request.form.get('message')
-
-        # Save the message from user
-        new_message = ChatHistory(
-            message=message_content,
-            role='character',
-            user_id=user_id,
-            char_id=char_id
-        )
-        db.session.add(new_message)
-
-        # Invoke AI response
-        input_message = [HumanMessage(content=message_content)]
-
-        response_state = chatbot_app.invoke(
-            input= {"messages": input_message},
-            config=config,
-            recursion_limit=5
-        )
-
-        ai_response_content = response_state["messages"][-1].content
-
-        # Save AI response
-        ai_message = ChatHistory(
-            message=ai_response_content,
-            role='ai',
-            user_id=user_id,
-            char_id=char_id
-        )
-        db.session.add(ai_message)
-
-        # Commit the exchange
-        db.session.commit()
-
-        return redirect(url_for('chat', username=username, char_name=char_name))
-
-    # Load messages for chat
-    chat_history = db.session.execute(
-        select(ChatHistory).where(
-            (ChatHistory.user_id==user_id),
-                        (ChatHistory.char_id==char_id)
-        ).order_by(ChatHistory.created.asc())
-    ).scalars().all()
-
-    # If there is no message let AI begin
-    if not chat_history:
-        initial_message = [HumanMessage(content="Start the Story.")]
-
-        response_state = chatbot_app.invoke(
-            input={"messages": initial_message},
-            config=config,
-            recursion_limit=5
-        )
-
-        ai_response_content = response_state["messages"][-1].content
-
-        # Save AI response
-        ai_message = ChatHistory(
-            message=ai_response_content,
-            role='ai',
-            user_id=user_id,
-            char_id=char_id
-        )
-        db.session.add(ai_message)
-        db.session.commit()
-
-        chat_history = db.session.execute(
-            select(ChatHistory).where(
-                (ChatHistory.user_id == user_id),
-                (ChatHistory.char_id == char_id)
-            ).order_by(ChatHistory.created.asc())
-        ).scalars().all()
-
-
-    return render_template('chat.html', history=chat_history, username=username, char_name=char_name)
-
-
 @app.route('/users/<string:username>/characters/<string:char_name>/chat', methods=['GET'])
 def chat_using_streamlit(username, char_name):
     """
@@ -277,11 +176,33 @@ def send_chat_message(username, char_name):
     thread_id = int(f"{user_id}{char_id}")
     config = {"configurable": {"thread_id": thread_id}}
 
-    data = request.get_json()
+    print("\n--- Incoming POST Request Debug ---")
+
+    # 1. Check Headers (Is Content-Type present?)
+    print("Headers:", dict(request.headers))
+
+    # 2. Check Raw Data (Is the body empty?)
+    try:
+        raw_data = request.data.decode('utf-8')
+        print("Raw Request Body:", raw_data)
+        request.data = raw_data.encode('utf-8')  # Reset data stream for get_json()
+    except Exception as e:
+        print(f"Error reading raw data: {e}")
+
+    print("-----------------------------------")
+
+   #try:
+    data = request.get_json(silent=True)
+    # except Exception as e:
+    #     return jsonify({"error": f"Invalid JSON Format in request body:{e}"}), 400
+    if data is None:
+        return jsonify({"error": f"Invalid JSON Format in request body."}), 400
     message_content = data.get('message')
 
-    if not message_content:
-        return jsonify({"error": "Message could not be found."})
+    print(f"DEBUG send_chat_message(): message_content = {repr(message_content)}")
+
+    if not message_content or not message_content.strip():
+        return jsonify({"error": "Message could not be found."}), 400
 
     # Save the message from user
     new_message = ChatHistory(
@@ -296,7 +217,7 @@ def send_chat_message(username, char_name):
     input_message = [HumanMessage(content=message_content)]
 
     response_state = chatbot_app.invoke(
-        input={"messages": input_message},
+        input={"messages": input_message, "language": "English"},
         config=config,
         recursion_limit=5
     )
@@ -315,7 +236,7 @@ def send_chat_message(username, char_name):
     # Commit the exchange
     db.session.commit()
 
-    return jsonify({"sucess": True}), 200
+    return jsonify({"success": True}), 200
 
 
 @app.route('/users/<string:username>/characters/<string:char_name>/history', methods=['GET'])
@@ -331,6 +252,8 @@ def get_chat_history(username, char_name):
 
     user_id = user.user_id
     char_id = character.char_id
+    thread_id = int(f"{user_id}{char_id}")
+    config = {"configurable": {"thread_id":thread_id}}
 
     # Load chat history
     chat_history = db.session.execute(
@@ -340,12 +263,41 @@ def get_chat_history(username, char_name):
         ).order_by(ChatHistory.created.asc())
     ).scalars().all()
 
+    if not chat_history:
+        initial_message = [HumanMessage(content="Start the story.")]
+
+        response_state = chatbot_app.invoke(
+            input={"messages": initial_message, "language": "English"},
+            config=config,
+            recursion_limit=5
+        )
+
+        ai_response_content = response_state["messages"][-1].content
+
+        # Save AI message
+        ai_message = ChatHistory(
+            message=ai_response_content,
+            role='ai',
+            user_id=user_id,
+            char_id=char_id
+        )
+        db.session.add(ai_message)
+        db.session.commit()
+
+        # Reload history chat
+        chat_history = db.session.execute(
+            select(ChatHistory).where(
+                (ChatHistory.user_id == user_id),
+                (ChatHistory.char_id == char_id)
+            ).order_by(ChatHistory.created.asc())
+        ).scalars().all()
+
     # Convert to JSON
     history_json = [
-        {"role": msg.role, "message": msg.message}
+        {"role": msg.role, "messages": msg.message}
         for msg in chat_history
     ]
-
+    # return history
     return jsonify(history_json)
 
 

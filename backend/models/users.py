@@ -2,7 +2,7 @@ from typing import List
 from sqlalchemy import String
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 
-from StoryAI.backend.models.chat_history import ChatHistory
+from .chat_history import ChatHistory
 from .db import db
 
 class User(db.Model):

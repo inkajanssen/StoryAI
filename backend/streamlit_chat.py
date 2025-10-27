@@ -18,17 +18,26 @@ embed_mode = username_param is not None and char_name_param is not None
 
 def fetch_history(username, char_name):
     response = requests.get(f"{BACKEND_URL}/users/{username}/characters/{char_name}/history")
-    data = response.json()
-    return data
+
+    if response.status_code == 200:
+        data = response.json()
+        return data
+    else:
+        print(f"Error fetching history: {response.status_code}")
+        print(f"Error message: {response.text}")
+        return []
 
 
 def send_message(username, char_name, message):
-    response = requests.post(
-        f"{BACKEND_URL}/users/{username}/characters/{char_name}/chat",
-        json={"message":message}
-    )
-
-    return response.status_code == 200
+    try:
+        response = requests.post(
+            f"{BACKEND_URL}/users/{username}/characters/{char_name}/chat",
+            json={"message":message}
+        )
+        return response.status_code == 200
+    except requests.exceptions.ConnectionError:
+        st.error("Connection to Flask Backend failed.")
+        return False
 
 def main():
     if embed_mode and username_param and char_name_param:
@@ -38,32 +47,26 @@ def main():
             st.session_state.chat_loaded = False
 
         if not st.session_state.chat_loaded:
-            st.session_state.chat_history = fetch_history(username_param, char_name_param)
+            history = fetch_history(username_param, char_name_param)
+            st.session_state.chat_history = history
             st.session_state.chat_loaded = True
 
-        chat_container = st.container()
+            if history:
+                st.rerun()
 
-        with chat_container:
-            if st.session_state.chat_history:
-                for msg in st.session_state.chat_history:
-                    role = msg.get('role', 'character')
-                    message = msg.get('message', '')
+        # Display Chat History Loop
+        for msg in st.session_state.chat_history:
+            role = msg.get('role', 'character')
+            message = msg.get('messages','')
 
-                    if role == 'ai':
-                        st.markdown(
-                            f'<div class="ai-message">🤖 <strong>AI:</strong><br>{message}</div>',
-                            unsafe_allow_html=True
-                        )
-                    else:
-                        st.markdown(
-                            f'<div class="user-message"><strong>You:</strong><br>{message}</div>',
-                            unsafe_allow_html=True
-                        )
-            else:
-                st.info("Start the conversation!")
+            # Enforce Streamlits roles
+            streamlit_role = 'assistant' if role == 'ai' else 'user'
 
-        with st.container():
-            col1, col2 = st.columns([5, 1])
+            with st.chat_message(streamlit_role):
+                st.write(message)
+
+        with st.form("chat input form", clear_on_submit=True):
+            col1, col2 = st.columns([5,1])
 
             with col1:
                 user_input = st.text_input(
@@ -74,14 +77,21 @@ def main():
                 )
 
             with col2:
-                send_btn = st.button("Send", use_container_width=True, type="primary")
+                submitted = st.form_submit_button(
+                    "Send",
+                    type="primary",
+                    use_container_width=True
+                )
 
         # Handle send
-        if send_btn and user_input:
+        if submitted and user_input.strip():
             if send_message(username_param, char_name_param, user_input):
                 st.session_state.chat_history = fetch_history(username_param, char_name_param)
                 st.session_state.chat_loaded = True
                 st.rerun()
+            else:
+                st.error("Failed to send message. Please try again.")
+
 
     else:
         # Standalone mode with user/character selection
