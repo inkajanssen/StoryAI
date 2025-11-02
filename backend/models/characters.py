@@ -1,6 +1,6 @@
 from typing import List
 
-from sqlalchemy import ForeignKey, String
+from sqlalchemy import ForeignKey, String, Integer
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 
 from .db import db
@@ -12,11 +12,11 @@ class Character(db.Model):
         a name (char_name)
         the user_id of the creator
         a relationship to the creator (creator)
-        a picture TODO
+        a picture (char_image)
         a skillset of:
-            TODO
-        possible items?TODO
-        backstory TODO
+            Str, Dex, Con, Wis, Int, Cha
+        detailed description: appearance, backstory, personality
+        possible items? TODO
     """
     __tablename__ = "characters"
 
@@ -24,6 +24,18 @@ class Character(db.Model):
 
     char_id:Mapped[int] = mapped_column(primary_key = True)
     char_name:Mapped[str] = mapped_column(String(100), nullable = False)
+    char_image:Mapped[str] = mapped_column(String(500), nullable=True)
+
+    char_personality:Mapped[str] = mapped_column(String(1000), nullable=True)
+    char_backstory:Mapped[str] = mapped_column(String(2000), nullable=True)
+    char_appearance:Mapped[str] = mapped_column(String(1000), nullable=True)
+
+    strength:Mapped[int] = mapped_column(Integer, default=8, nullable=False)
+    dexterity: Mapped[int] = mapped_column(Integer, default=8, nullable=False)
+    constitution: Mapped[int] = mapped_column(Integer, default=8, nullable=False)
+    intelligence: Mapped[int] = mapped_column(Integer, default=8, nullable=False)
+    wisdom: Mapped[int] = mapped_column(Integer, default=8, nullable=False)
+    charisma: Mapped[int] = mapped_column(Integer, default=8, nullable=False)
 
     user_id:Mapped[int] = mapped_column(ForeignKey("users.user_id"))
     creator:Mapped["User"] = relationship(back_populates="created_chars")

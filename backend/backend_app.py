@@ -1,12 +1,23 @@
+import os.path
+from fileinput import filename
+from glob import glob
+from logging import PlaceHolder
+
+import requests.exceptions
 from flask import render_template, request, flash, redirect, url_for, abort, jsonify
 from langchain_core.messages import HumanMessage
 from sqlalchemy import select
 from flask_cors import CORS
+from werkzeug.utils import secure_filename
 
 from models import db, create_app, User, Character, ChatHistory, create_chatbot
 
 # Call create app from db.py
 app = create_app()
+
+# Define Upload Folder
+UPLOAD_FOLDER = 'static/character_images'
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 # Create chatbot
 chatbot_app = create_chatbot()
@@ -21,7 +32,7 @@ character_manager = CharacterManager(db, Character, User)
 user_manager = UserManager(db, User, Character)
 chat_manager = ChatManager(db, ChatHistory)
 
-
+# TODO Refractor routes to their own py
 @app.route('/', methods=['GET'])
 def home():
     """
@@ -79,14 +90,48 @@ def add_character(username):
     Adds a new character to user list of characters
     """
     user = db.session.query(User).filter_by(username=username).one_or_none()
-    char_name = request.form.get('add_character').strip()
+    char_name = request.form.get('char_name').strip()
 
     if not user or not char_name:
         flash(message=f"Error: Please try again. User:{user.username}, char_name={char_name}")
         return redirect(url_for('characters_of_user', username=user.username))
 
-    character = character_manager.create_character(char_name, user.user_id)
+    PLACEHOLDER_PATH = url_for('static', filename='character_images/Portrait_Placeholder.png', _external=True)
+    secure_char_name = secure_filename(char_name)
+
+    uploaded_img = request.files.get('char_img')
+    image_url = request.form.get('char_url')
+
+    image_path_or_url = None
+
+    if uploaded_img and uploaded_img.filename:
+        file_extension = os.path.splitext(uploaded_img.filename)[1]
+        unique_filename = f"{secure_char_name}{file_extension}"
+
+        upload_dir = os.path.join(app.root_path, app.config['UPLOAD_FOLDER'])
+        file_path = os.path.join(upload_dir, unique_filename)
+
+        uploaded_img.save(file_path)
+        image_path_or_url = url_for('static', filename=f'character_images/{unique_filename}', _external=True)
+
+    elif image_url:
+        try:
+            r = requests.head(image_url, timeout=5)
+            if 'image' in r.headers.get('Content-Type', ''):
+                image_path_or_url = image_url
+            else:
+                return "Invalid image URL or unsupported type", 400
+        except requests.exceptions.RequestException:
+            return "Could not reach provided image URL", 400
+
+    if not image_path_or_url:
+        image_path_or_url = PLACEHOLDER_PATH
+
+
+
+    character = character_manager.create_character(char_name, user.user_id, char_image=image_path_or_url)
     flash(message=character)
+
     return redirect(url_for('characters_of_user', username=user.username))
 
 
@@ -134,6 +179,22 @@ def delete_character(username, char_name):
     """
     user = db.session.query(User).filter_by(username=username).one_or_none()
     char_to_delete = user.created_chars.filter(Character.char_name == char_name).one_or_none()
+    image_path = char_to_delete.char_image
+
+    print(image_path)
+
+    static_url_prefix = url_for('static', filename='character_images/', _external=True)
+
+    if image_path and image_path.startswith(static_url_prefix):
+        filename_to_delete = image_path.replace(static_url_prefix, '', 1)
+
+        filename_to_delete = secure_filename(filename_to_delete)
+
+        upload_dir = os.path.join(app.root_path, app.config['UPLOAD_FOLDER'])
+        file_path = os.path.join(upload_dir, filename_to_delete)
+
+        if os.path.exists(file_path):
+            os.remove(file_path)
 
     character_manager.delete_character(char_to_delete.char_id)
 
@@ -216,6 +277,7 @@ def send_chat_message(username, char_name):
     # Invoke AI response
     input_message = [HumanMessage(content=message_content)]
 
+    # TODO make language selectable
     response_state = chatbot_app.invoke(
         input={"messages": input_message, "language": "English"},
         config=config,

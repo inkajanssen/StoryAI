@@ -59,7 +59,7 @@ def main():
             role = msg.get('role', 'character')
             message = msg.get('messages','')
 
-            # Enforce Streamlits roles
+            # Enforce Streamlit roles
             streamlit_role = 'assistant' if role == 'ai' else 'user'
 
             with st.chat_message(streamlit_role):

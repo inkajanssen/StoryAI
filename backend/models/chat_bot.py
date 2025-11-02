@@ -37,6 +37,7 @@ class State(TypedDict):
     language: str
 
 #Create system prompt
+# TODO Factor in the character, rework prompt
 system_prompt = (
             "You are a dungeon master."
             "Your task is to create a story for the user and use their answer to further the story."
