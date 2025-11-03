@@ -3,16 +3,8 @@
 <h1>Update Character</h1>
 
 
-<form method="POST" action="{{url_for('update_character', username=username, char_name = character.char_name)}}">
+<form method="POST" action="{{url_for('update_character', username=username, char_name = character.char_name)}}" enctype="multipart/form-data">
 
-    <div class="form-group">
-        <label for="char_name">Name:</label><br>
-        <input type="text" id="char_name" name="char_name" value="{{character.char_name}}" required><br>
-    </div>
-
-    <button type="submit" class="btn btn-primary">Update Character</button>
-
-</form>
 
 <a href="{{ url_for('characters_of_user', username=username) }}">Return to user page</a>
 

@@ -1,5 +1,11 @@
 # StoryAI
 
+## Further Advancements:
+
+- using Javascript/React o. something similar to enhance the webpages
+- full separation between front- and backend with this
+- give the user a meaning to update/change their char
+
 ### Attribution
 
 Placeholder Image:

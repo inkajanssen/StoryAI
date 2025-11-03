@@ -2,8 +2,6 @@
 {% block content %}
 <h1>Chat with {{ char_name }}</h1>
 
-<a href="{{url_for('char', username=username, char_name=char_name)}}"> Back to character</a>
-
 <div id="loading">Loading chat...</div>
 
 <iframe
@@ -14,5 +12,7 @@
     style="display:none;"
     onload="document.getElementById('loading').style.display='none'; this.style.display='block';">
 </iframe>
+
+<a href="{{url_for('char', username=username, char_name=char_name)}}" class="chat_container_link"> Back to character</a>
 
 {% endblock %}

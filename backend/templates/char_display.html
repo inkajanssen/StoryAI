@@ -2,17 +2,50 @@
 {% block content %}
 <h1>{{ character.char_name }}</h1>
 
-    <form action="{{ url_for('update_character', username=user.username, char_name=character.char_name) }}" method="GET"><br>
-    <button type="submit" class="update-button">Update</button>
-    <br>
+<div class="char-image">
+    <img src="{{ character.char_image }}" alt="Image of {{ character.char_name }}">
+</div>
+
+<form class="chat-with-char" action="{{ url_for('chat_using_streamlit', username=user.username, char_name=character.char_name) }}"
+          method="get"><br>
+        <input type="submit" value="Chat"><br>
+</form>
+
+<h2>Description:</h2>
+<div class="character-description">
+    <h3> Appearance:</h3>
+    <p>{{ character.char_description or "N/A"}}</p>
+
+    <h3>Personality:</h3>
+    <p>{{ character.char_personality or "N/A"}}</p>
+
+    <h3>Backstory:</h3>
+    <p>{{ character.char_backstory or "N/A"}}</p>
+</div>
+
+<h2>Skills:</h2>
+<div class="skills">
+    <ul>
+        <li>Strength: {{character.strength}}</li>
+        <li>Dexterity: {{character.dexterity}}</li>
+        <li>Constitution: {{character.constitution}}</li>
+        <li>Intelligence: {{character.intelligence}}</li>
+        <li>Wisdom:{{character.wisdom}}</li>
+        <li>Charisma: {{character.charisma}}</li>
+    </ul>
+</div>
+
+  <div >
+<!--    <form action="{{ url_for('update_character', username=user.username, char_name=character.char_name) }}"-->
+<!--          method="GET"><br>-->
+<!--        <button type="submit" class="update-button">Update</button>-->
+<!--        <br>-->
+<!--    </form>-->
+
+    <form class="char-actions" action="{{ url_for('delete_character', username=user.username, char_name=character.char_name)}}"
+          method="post"><br>
+        <input type="submit" value="Delete Character"><br>
     </form>
 
-    <form action="{{ url_for('delete_character', username=user.username, char_name=character.char_name) }}" method="post"><br>
-    <input type="submit" value="Delete Character"><br>
-    </form>
-
-    <form action="{{ url_for('chat_using_streamlit', username=user.username, char_name=character.char_name) }}" method="get"><br>
-    <input type="submit" value="Chat"><br>
-    </form>
-
+</div>
 {% endblock %}

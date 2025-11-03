@@ -5,18 +5,22 @@
 <ul class="character-list">
     {% for character in characters %}
     <li>
+        <img src="{{character.char_imgage}}" class="character-profile">
         <a href="{{ url_for('char', username=user.username, char_name=character.char_name) }}">{{character.char_name}}</a>
     </li>
     {% endfor %}
 </ul>
 
+
 <form action="{{url_for('add_character', username=user.username)}}" method="POST" enctype="multipart/form-data">
     <h2>Create new Character</h2>
 
-    <label for="char_name">Character Name:</label><br>
-    <input type="text" id="char_name" name="char_name" placeholder="Enter Characters Name"><br>
+    <h3> Character Name</h3>
+    <label for="char_name"></label>
+    <input type="text" id="char_name" name="char_name" placeholder="Enter Characters Name" required><br>
 
-    ---
+    <hr>
+
     <h3>Character Details</h3>
 
     <label for="appearance">Appearance:</label>
@@ -28,10 +32,10 @@
     <label for="backstory">Backstory:</label>
     <textarea id="backstory" name="backstory" rows="6" placeholder="Provide a brief history of your character."></textarea><br>
 
-    ---
+    <hr>
 
     <h3> Attributes </h3>
-    <p> You have a total of **10 extra points** to spend among these attributes:</p>
+    <p> You have a total of <strong>10 extra points</strong> to spend among these attributes:</p>
 
     <label for="strength">Strength:</label>
     <input type="number" id="strength" name="strength" value="8" min="8" max="18" required><br>
@@ -51,18 +55,22 @@
     <label for="charisma">Charisma:</label>
     <input type="number" id="charisma" name="charisma" value="8" min="8" max="18" required><br>
 
-    ---
-    <h3>Character Image (Choose One)</h3>
+    <hr>
 
+    <h3>Character Image (Choose One)</h3>
+    <div class="images">
     <label for="char_img"> Upload a file:</label>
     <input type="file" id="char_img" name="char_img" accept="image/*" ><br>
 
-    <p style="text-align: center">Or</p>
+    <p style="text-align: left"><strong>OR</strong></p>
 
     <label for="char_url">Enter an image URL:</label><br>
     <input type="text" id="char_url" name="char_url" placeholder="https://example.com/image.jpg"><br>
-    ---
+    </div>
+    <hr>
+
     <input type="submit" value="Create Character"><br>
+
 </form>
 
 {% endblock %}

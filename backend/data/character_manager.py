@@ -6,7 +6,9 @@ class CharacterManager:
         self.User = user_model
 
 
-    def create_character(self, char_name, user_id, char_image):
+    def create_character(self, char_name,user_id,char_image,
+                         appearance,personality,backstory,strength,
+                         dexterity,constitution,intelligence,wisdom,charisma):
         """
         Create a character and link it to user
         """
@@ -18,7 +20,23 @@ class CharacterManager:
         if user.created_chars.count() >= 3:
             return "Error: You already have three Characters. You cannot create more."
 
-        new_char = self.Character(char_name=char_name,user_id=user_id, char_image=char_image)
+        new_char = self.Character(
+            char_name=char_name,
+            user_id=user_id,
+            char_image=char_image,
+
+            appearance=appearance,
+            personality=personality,
+            backstory=backstory,
+
+             strength=strength,
+             dexterity=dexterity,
+             constitution=constitution,
+             intelligence=intelligence,
+             wisdom=wisdom,
+             charisma=charisma,
+        )
+
         self.db.session.add(new_char)
         self.db.session.commit()
         return f"{char_name} was successfully created."

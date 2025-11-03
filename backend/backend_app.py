@@ -1,7 +1,4 @@
 import os.path
-from fileinput import filename
-from glob import glob
-from logging import PlaceHolder
 
 import requests.exceptions
 from flask import render_template, request, flash, redirect, url_for, abort, jsonify
@@ -11,6 +8,9 @@ from flask_cors import CORS
 from werkzeug.utils import secure_filename
 
 from models import db, create_app, User, Character, ChatHistory, create_chatbot
+
+BASE_TOTAL = 48 # Total points of attributes before distribution
+MAX_POINTS = 10 # Total of points to distribute
 
 # Call create app from db.py
 app = create_app()
@@ -96,6 +96,28 @@ def add_character(username):
         flash(message=f"Error: Please try again. User:{user.username}, char_name={char_name}")
         return redirect(url_for('characters_of_user', username=user.username))
 
+    try:
+        strength = int(request.form.get('strength', 8))
+        dexterity = int(request.form.get('dexterity', 8))
+        constitution = int(request.form.get('constitution', 8))
+        intelligence = int(request.form.get('intelligence', 8))
+        wisdom = int(request.form.get('wisdom', 8))
+        charisma = int(request.form.get('charisma', 8))
+
+    except ValueError:
+        message="Error: Attributes need to be whole numbers"
+        flash(message, "error")
+        return redirect(url_for('characters_of_user', username=username))
+
+    total_current_stats = (strength+dexterity+constitution+intelligence+wisdom+charisma)
+
+    points_invested= total_current_stats - BASE_TOTAL
+
+    if points_invested > MAX_POINTS:
+        message=f"Error: Character Creation failed! You invested {points_invested} but can only distribute {MAX_POINTS}."
+        flash(message, "error")
+        return redirect(url_for('characters_of_user', username=username))
+
     PLACEHOLDER_PATH = url_for('static', filename='character_images/Portrait_Placeholder.png', _external=True)
     secure_char_name = secure_filename(char_name)
 
@@ -127,11 +149,28 @@ def add_character(username):
     if not image_path_or_url:
         image_path_or_url = PLACEHOLDER_PATH
 
+    appearance = request.form.get('appearance')
+    personality = request.form.get('personality')
+    backstory = request.form.get('backstory')
 
+    character = (character_manager.create_character
+                 (char_name=char_name,
+                  user_id=user.user_id,
+                  char_image=image_path_or_url,
 
-    character = character_manager.create_character(char_name, user.user_id, char_image=image_path_or_url)
+                  appearance=appearance,
+                  personality=personality,
+                  backstory=backstory,
+
+                  strength=strength,
+                  dexterity=dexterity,
+                  constitution=constitution,
+                  intelligence=intelligence,
+                  wisdom=wisdom,
+                  charisma=charisma
+                  ))
+
     flash(message=character)
-
     return redirect(url_for('characters_of_user', username=user.username))
 
 
