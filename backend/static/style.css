@@ -333,9 +333,10 @@ form p[style*="text-align: center"] {
     border-radius: 8px;
     cursor: pointer;
     border: 1px solid;
-    min-width: 120%;
     font-family: 'Copperplate', serif;
     font-size: 1.1em;
+    min-width:250px
+    max-width:500px;
 }
 
 .chat-with-char input[type="submit"] {
@@ -344,13 +345,11 @@ form p[style*="text-align: center"] {
     border-color: #3b302c;
 }
 
-
 .char-actions input[type="submit"] {
     background-color: #8c2f1f;
     color: #fcf6e6;
     border-color: #58180e;
 }
-
 
 .char-actions input[type="submit"]:hover {
     background-color: #b0331f;
