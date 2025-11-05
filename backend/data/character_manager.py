@@ -25,9 +25,9 @@ class CharacterManager:
             user_id=user_id,
             char_image=char_image,
 
-            appearance=appearance,
-            personality=personality,
-            backstory=backstory,
+            char_appearance=appearance,
+            char_personality=personality,
+            char_backstory=backstory,
 
              strength=strength,
              dexterity=dexterity,

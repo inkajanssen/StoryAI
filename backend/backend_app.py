@@ -9,7 +9,7 @@ from werkzeug.utils import secure_filename
 
 from models import db, create_app, User, Character, ChatHistory, create_chatbot
 
-BASE_TOTAL = 48 # Total points of attributes before distribution
+BASE_TOTAL = 48 # Total points of attributes before distribution 6 Skills * 8 Base Points
 MAX_POINTS = 10 # Total of points to distribute
 
 # Call create app from db.py
