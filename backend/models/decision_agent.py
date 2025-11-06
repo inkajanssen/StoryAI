@@ -8,9 +8,25 @@ from langchain_core.runnables import RunnablePassthrough
 from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, Field
 
-from StoryAI.backend.models.chat_bot import prompt_template
-
 DecisionType = Literal["skill_check", "narrative_continues"]
+
+# Define here which chatbot to use TODO let user choose
+CHATBOT_MODEL = 'gpt-4o-mini'
+
+load_dotenv()
+
+# load LangSmith API Key and GPT API Key
+if not os.environ.get('OPENAI_API_KEY'):
+    openai_key = os.getenv('OPENAI_API_KEY')
+    if openai_key:
+        os.environ['OPENAI_API_KEY'] = openai_key
+    else:
+        os.environ['OPENAI_API_KEY'] = getpass.getpass("Enter API key for OpenAI: ")
+
+if not os.environ.get('LANGSMITH_API_KEY'):
+    os.environ['LANGSMITH_API_KEY'] = "true"
+    os.environ['LANGSMITH_API_KEY'] = os.getenv('LANGSMITH_API_KEY')
+
 
 class CoreDecisions(BaseModel):
     """
@@ -54,22 +70,6 @@ The response text should be a brief narrative description of the check made.
 5. If the user does not want to make an action that requires a role, set DecisionType to 'narrative_continues', set the parameter
 ability, ability_score and dc to null.
 """
-
-# Define here which chatbot to use TODO let user choose
-CHATBOT_MODEL = 'gpt-4o-mini'
-
-load_dotenv()
-
-# load LangSmith API Key and GPT API Key
-if not os.environ.get('OPENAI_API_KEY'):
-    openai_key = os.getenv('OPENAI_API_KEY')
-    if openai_key:
-        os.environ['OPENAI_API_KEY'] = openai_key
-    else:
-        os.environ['OPENAI_API_KEY'] = getpass.getpass("Enter API key for OpenAI: ")
-
-if not os.environ.get('LANGSMITH_API_KEY'):
-    os.environ['LANGSMITH_API_KEY'] = "true"
 
 #Initialize language model
 llm = ChatOpenAI(model=CHATBOT_MODEL, temperature=0)

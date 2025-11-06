@@ -8,7 +8,8 @@ from flask_cors import CORS
 from werkzeug.utils import secure_filename
 
 from logic import roll_skill_check
-from models import db, create_app, User, Character, ChatHistory, create_chatbot, run_core_decisions
+from models import (db, create_app, User, Character, ChatHistory, create_chatbot, run_core_decisions,
+                    backstory_agent, personality_agent, appearance_agent, proficiency_agent)
 
 BASE_TOTAL = 48 # Total points of attributes before distribution 6 Skills * 8 Base Points
 MAX_POINTS = 10 # Total of points to distribute
@@ -333,6 +334,7 @@ async def send_chat_message(username, char_name):
         print(f"Error:{e}")
         return jsonify({"error": "Decision agent failed. (LLM Error)"}), 500
 
+    roll_narrative_message = ""
 
     # 1. Route = There is a skill check
     if decision_result.next_action == 'skill_check':
@@ -361,9 +363,13 @@ async def send_chat_message(username, char_name):
         """
 
     # 2. Route = There is NO skill check
-
     elif decision_result.next_action == 'narrative_continues':
-        pass
+
+
+        input_for_all = {
+            "context": full_context['last_ai_message'],
+            "user_message": message_content
+        }
 
     ai_response_content = response_state["messages"][-1].content
 
