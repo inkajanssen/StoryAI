@@ -1,5 +1,5 @@
 import os.path
-
+import asyncio
 import requests.exceptions
 from flask import render_template, request, flash, redirect, url_for, abort, jsonify
 from langchain_core.messages import HumanMessage
@@ -7,7 +7,8 @@ from sqlalchemy import select
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
 
-from models import db, create_app, User, Character, ChatHistory, create_chatbot
+from logic import roll_skill_check
+from models import db, create_app, User, Character, ChatHistory, create_chatbot, run_core_decisions
 
 BASE_TOTAL = 48 # Total points of attributes before distribution 6 Skills * 8 Base Points
 MAX_POINTS = 10 # Total of points to distribute
@@ -256,9 +257,9 @@ def chat_using_streamlit(username, char_name):
 
 
 @app.route('/users/<string:username>/characters/<string:char_name>/chat', methods=['POST'])
-def send_chat_message(username, char_name):
+async def send_chat_message(username, char_name):
     """
-    Streamlit Endpoint for saving the messages
+    Streamlit Endpoint for saving the messages and determining the next move(roll or narrative)
     """
     if chatbot_app is None:
         return jsonify({"error": "Chatbot is unavailable."}), 503
@@ -276,33 +277,45 @@ def send_chat_message(username, char_name):
     thread_id = int(f"{user_id}{char_id}")
     config = {"configurable": {"thread_id": thread_id}}
 
-    print("\n--- Incoming POST Request Debug ---")
-
-    # 1. Check Headers (Is Content-Type present?)
-    print("Headers:", dict(request.headers))
-
-    # 2. Check Raw Data (Is the body empty?)
-    try:
-        raw_data = request.data.decode('utf-8')
-        print("Raw Request Body:", raw_data)
-        request.data = raw_data.encode('utf-8')  # Reset data stream for get_json()
-    except Exception as e:
-        print(f"Error reading raw data: {e}")
-
-    print("-----------------------------------")
-
-   #try:
+    # Get JSON message
     data = request.get_json(silent=True)
-    # except Exception as e:
-    #     return jsonify({"error": f"Invalid JSON Format in request body:{e}"}), 400
     if data is None:
         return jsonify({"error": f"Invalid JSON Format in request body."}), 400
-    message_content = data.get('message')
 
-    print(f"DEBUG send_chat_message(): message_content = {repr(message_content)}")
+    message_content = data.get('message')
 
     if not message_content or not message_content.strip():
         return jsonify({"error": "Message could not be found."}), 400
+
+    # Fetch the last AI response in chat
+    last_ai_response = db.session.execute(
+        select(ChatHistory.message).where(
+            (ChatHistory.user_id == user_id),
+            (ChatHistory.char_id == char_id),
+            (ChatHistory.role == 'ai')
+        )
+        .order_by(ChatHistory.created.desc())
+        .limit(1)
+    ).one_or_none()
+
+    if not last_ai_response:
+        return jsonify({"error": "Game not initialized. Please reload chat"}), 400
+
+    # Context gathering for Decision-making
+    full_context={
+        "character_sheet":{
+            "name": character.char_name,
+            "strength": character.strength,
+            "dexterity": character.dexterity,
+            "constitution": character.constitution,
+            "intelligence": character.intelligence,
+            "wisdom": character.wisdom,
+            "charisma": character.charisma,
+            "personality": character.char_personality,
+            "backstory": character.char_backstory,
+        },
+        "last_ai_message": last_ai_response
+    }
 
     # Save the message from user
     new_message = ChatHistory(
@@ -313,15 +326,44 @@ def send_chat_message(username, char_name):
     )
     db.session.add(new_message)
 
-    # Invoke AI response
-    input_message = [HumanMessage(content=message_content)]
+    # Call the decision agent
+    try:
+        decision_result = await run_core_decisions(full_context, message_content)
+    except RuntimeError as e:
+        print(f"Error:{e}")
+        return jsonify({"error": "Decision agent failed. (LLM Error)"}), 500
 
-    # TODO make language selectable
-    response_state = chatbot_app.invoke(
-        input={"messages": input_message, "language": "English"},
-        config=config,
-        recursion_limit=5
-    )
+
+    # 1. Route = There is a skill check
+    if decision_result.next_action == 'skill_check':
+        ability_type = decision_result.ability
+        ability_score = decision_result.ability_score
+        dc = decision_result.dc
+        roll_pre_text = decision_result.response_text
+
+        # roll dice
+        outcome, d20_roll, modifier, roll_total = roll_skill_check(ability_score, dc)
+
+        # give output to narrative_agent
+        roll_narrative_message = f"""
+        **Decision: Skill Check**
+        User Action: "{message_content}"
+        Check Type: "{ability_type}"
+        Score:"{ability_score}"
+        DC :"{dc}"
+        Roll Narrative:"{roll_pre_text}"
+        
+        Roll Result: {outcome}
+        Details: 1d20:{d20_roll} + Modifier {modifier} = Total of {roll_total} against DC {dc}
+        
+        **Character Sheet Data:**
+        {full_context['character_sheet']}
+        """
+
+    # 2. Route = There is NO skill check
+
+    elif decision_result.next_action == 'narrative_continues':
+        pass
 
     ai_response_content = response_state["messages"][-1].content
 
@@ -353,6 +395,7 @@ def get_chat_history(username, char_name):
 
     user_id = user.user_id
     char_id = character.char_id
+
     thread_id = int(f"{user_id}{char_id}")
     config = {"configurable": {"thread_id":thread_id}}
 

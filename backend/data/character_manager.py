@@ -29,12 +29,12 @@ class CharacterManager:
             char_personality=personality,
             char_backstory=backstory,
 
-             strength=strength,
-             dexterity=dexterity,
-             constitution=constitution,
-             intelligence=intelligence,
-             wisdom=wisdom,
-             charisma=charisma,
+            strength=strength,
+            dexterity=dexterity,
+            constitution=constitution,
+            intelligence=intelligence,
+            wisdom=wisdom,
+            charisma=charisma,
         )
 
         self.db.session.add(new_char)
