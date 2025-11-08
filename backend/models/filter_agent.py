@@ -8,8 +8,6 @@ from langchain_core.runnables import RunnablePassthrough
 from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, Field
 
-from StoryAI.backend.models.decision_agent import SYSTEM_PROMPT
-
 # Define here which chatbot to use TODO let user choose
 CHATBOT_MODEL = 'gpt-4o-mini'
 

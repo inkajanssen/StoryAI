@@ -291,13 +291,12 @@ async def send_chat_message(username, char_name):
     # Fetch the last AI response in chat
     last_ai_response = db.session.execute(
         select(ChatHistory.message).where(
-            (ChatHistory.user_id == user_id),
-            (ChatHistory.char_id == char_id),
+            (ChatHistory.thread_id == thread_id),
             (ChatHistory.role == 'ai')
         )
         .order_by(ChatHistory.created.desc())
         .limit(1)
-    ).one_or_none()
+    ).scalar_one_or_none()
 
     if not last_ai_response:
         return jsonify({"error": "Game not initialized. Please reload chat"}), 400
@@ -323,9 +322,17 @@ async def send_chat_message(username, char_name):
         message=message_content,
         role='character',
         user_id=user_id,
-        char_id=char_id
+        char_id=char_id,
+        thread_id=thread_id
     )
     db.session.add(new_message)
+
+    chat_history = db.session.execute(
+        select(ChatHistory.role, ChatHistory.message).where(
+            (ChatHistory.thread_id == thread_id),
+            (ChatHistory.role == 'ai')
+        )
+    )
 
     # Call the decision agent
     try:
@@ -365,11 +372,31 @@ async def send_chat_message(username, char_name):
     # 2. Route = There is NO skill check
     elif decision_result.next_action == 'narrative_continues':
 
-
+        # Get the context together for the narrative agent
         input_for_all = {
+            "character_data": full_context['character_sheet'],
             "context": full_context['last_ai_message'],
             "user_message": message_content
         }
+
+        try:
+            backstory_result = await backstory_agent(input_for_all)
+            personality_result = await personality_agent(input_for_all)
+            appearance_result = await appearance_agent(input_for_all)
+            proficiency_result = await proficiency_agent(input_for_all)
+
+        except RuntimeError as e:
+            print(f"Error:{e}")
+            return jsonify({"error": "Filter agents failed. (LLM Error)"}), 500
+
+        relevant_context = {
+            "Backstory": backstory_result,
+            "Personality": personality_result,
+            "Appearance": appearance_result,
+            "Proficiency": proficiency_result
+        }
+
+        context_list = []
 
     ai_response_content = response_state["messages"][-1].content
 
@@ -378,7 +405,8 @@ async def send_chat_message(username, char_name):
         message=ai_response_content,
         role='ai',
         user_id=user_id,
-        char_id=char_id
+        char_id=char_id,
+        thread_id =thread_id
     )
     db.session.add(ai_message)
 
@@ -408,8 +436,7 @@ def get_chat_history(username, char_name):
     # Load chat history
     chat_history = db.session.execute(
         select(ChatHistory).where(
-            (ChatHistory.user_id == user_id),
-            (ChatHistory.char_id == char_id)
+            (ChatHistory.thread_id == thread_id),
         ).order_by(ChatHistory.created.asc())
     ).scalars().all()
 
@@ -429,7 +456,8 @@ def get_chat_history(username, char_name):
             message=ai_response_content,
             role='ai',
             user_id=user_id,
-            char_id=char_id
+            char_id=char_id,
+            thread_id=thread_id
         )
         db.session.add(ai_message)
         db.session.commit()
@@ -437,8 +465,7 @@ def get_chat_history(username, char_name):
         # Reload history chat
         chat_history = db.session.execute(
             select(ChatHistory).where(
-                (ChatHistory.user_id == user_id),
-                (ChatHistory.char_id == char_id)
+                (ChatHistory.thread_id == thread_id),
             ).order_by(ChatHistory.created.asc())
         ).scalars().all()
 

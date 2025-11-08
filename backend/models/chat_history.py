@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import ForeignKey, String, Text, DateTime
+from sqlalchemy import ForeignKey, String, Text, DateTime, Integer
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 
 from .db import db
@@ -17,6 +17,8 @@ class ChatHistory(db.Model):
     message:Mapped[str] = mapped_column(Text, nullable=False)
     role:Mapped[str] = mapped_column(String, nullable=False)
     created:Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+
+    thread_id:Mapped[int] = mapped_column(Integer, nullable=False)
 
     user_id:Mapped[int] = mapped_column(ForeignKey("users.user_id"))
     chatted_with:Mapped["User"] = relationship(back_populates="chats")
