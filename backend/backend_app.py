@@ -154,6 +154,7 @@ def add_character(username):
     appearance = request.form.get('appearance')
     personality = request.form.get('personality')
     backstory = request.form.get('backstory')
+    proficiencies = request.form.get('proficiencies')
 
     character = (character_manager.create_character
                  (char_name=char_name,
@@ -163,6 +164,7 @@ def add_character(username):
                   appearance=appearance,
                   personality=personality,
                   backstory=backstory,
+                  proficiencies=proficiencies,
 
                   strength=strength,
                   dexterity=dexterity,
@@ -313,6 +315,8 @@ async def send_chat_message(username, char_name):
             "charisma": character.charisma,
             "personality": character.char_personality,
             "backstory": character.char_backstory,
+            "appearance": character.char_appearance,
+            "proficiencies":character.char_proficiencies
         },
         "last_ai_message": last_ai_response
     }
@@ -327,13 +331,6 @@ async def send_chat_message(username, char_name):
     )
     db.session.add(new_message)
 
-    chat_history = db.session.execute(
-        select(ChatHistory.role, ChatHistory.message).where(
-            (ChatHistory.thread_id == thread_id),
-            (ChatHistory.role == 'ai')
-        )
-    )
-
     # Call the decision agent
     try:
         decision_result = await run_core_decisions(full_context, message_content)
@@ -341,7 +338,7 @@ async def send_chat_message(username, char_name):
         print(f"Error:{e}")
         return jsonify({"error": "Decision agent failed. (LLM Error)"}), 500
 
-    roll_narrative_message = ""
+    narrative_message = ""
 
     # 1. Route = There is a skill check
     if decision_result.next_action == 'skill_check':
@@ -354,7 +351,7 @@ async def send_chat_message(username, char_name):
         outcome, d20_roll, modifier, roll_total = roll_skill_check(ability_score, dc)
 
         # give output to narrative_agent
-        roll_narrative_message = f"""
+        narrative_message = f"""
         **Decision: Skill Check**
         User Action: "{message_content}"
         Check Type: "{ability_type}"
@@ -390,15 +387,31 @@ async def send_chat_message(username, char_name):
             return jsonify({"error": "Filter agents failed. (LLM Error)"}), 500
 
         relevant_context = {
-            "Backstory": backstory_result,
-            "Personality": personality_result,
-            "Appearance": appearance_result,
-            "Proficiency": proficiency_result
+            "Backstory": backstory_result.rel_story_elem,
+            "Personality": personality_result.rel_story_elem,
+            "Appearance": appearance_result.rel_story_elem,
+            "Proficiency": proficiency_result.rel_story_elem
         }
 
         context_list = []
+        for key, value in relevant_context.items():
+            if value and isinstance(value, list) and len(value)>0:
+                context_list.append(f"Relevant {key}: {', '.join(value)}")
 
-    ai_response_content = response_state["messages"][-1].content
+        narrative_message = (
+            f"Current Scene Context: {full_context['last_ai_message']}\n\n"
+            f"Relevant Character Data:\n" +
+            ("\n".join(context_list) if context_list else "None of the context information was relevant for the narrative.")
+        )
+
+    try:
+        ai_response_content = await chatbot_app(narrative_message)
+    except RuntimeError as e:
+        print(f"Error in narrative_agent: {e}")
+        return jsonify({"Error": "Narrative story creation failed"})
+
+    if not ai_response_content:
+        ai_response_content = "The narrative continues... (Response generation failed.)"
 
     # Save AI response
     ai_message = ChatHistory(

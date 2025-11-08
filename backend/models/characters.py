@@ -27,8 +27,9 @@ class Character(db.Model):
     char_image:Mapped[str] = mapped_column(String(500), nullable=True)
 
     char_personality:Mapped[str] = mapped_column(String(1000), nullable=True)
+    char_appearance: Mapped[str] = mapped_column(String(1000), nullable=True)
     char_backstory:Mapped[str] = mapped_column(String(2000), nullable=True)
-    char_appearance:Mapped[str] = mapped_column(String(1000), nullable=True)
+    char_proficiencies:Mapped[str] = mapped_column(String(1000), nullable=True)
 
     strength:Mapped[int] = mapped_column(Integer, default=8, nullable=False)
     dexterity: Mapped[int] = mapped_column(Integer, default=8, nullable=False)

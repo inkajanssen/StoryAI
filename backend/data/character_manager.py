@@ -7,7 +7,7 @@ class CharacterManager:
 
 
     def create_character(self, char_name,user_id,char_image,
-                         appearance,personality,backstory,strength,
+                         appearance,personality,backstory,proficiencies,strength,
                          dexterity,constitution,intelligence,wisdom,charisma):
         """
         Create a character and link it to user
@@ -28,6 +28,7 @@ class CharacterManager:
             char_appearance=appearance,
             char_personality=personality,
             char_backstory=backstory,
+            char_proficiencies=proficiencies,
 
             strength=strength,
             dexterity=dexterity,

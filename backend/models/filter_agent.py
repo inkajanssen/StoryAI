@@ -33,7 +33,7 @@ class RelevantElements(BaseModel):
     """
     Schema to filter if there is relevant Backstory
     """
-    rel_backstory_elem : Optional[List[str]] = Field(default=None, description=
+    rel_story_elem : Optional[List[str]] = Field(default=None, description=
                                         "A list of relevant elements given the context and user action."
                                         "Return an empty List if none are relevant.")
 
