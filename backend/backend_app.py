@@ -11,8 +11,8 @@ from logic import roll_skill_check
 from models import (db, create_app, User, Character, ChatHistory, create_chatbot, run_core_decisions,
                     backstory_agent, personality_agent, appearance_agent, proficiency_agent)
 
-BASE_TOTAL = 48 # Total points of attributes before distribution 6 Skills * 8 Base Points
-MAX_POINTS = 10 # Total of points to distribute
+BASE_TOTAL = 48 # Total points of attributes before distribution: 6 Skills * 8 Base Points
+MAX_POINTS = 20 # Total of points to distribute
 
 # Call create app from db.py
 app = create_app()
@@ -83,7 +83,7 @@ def characters_of_user(username):
     user = db.session.query(User).filter_by(username=username).one_or_none()
     characters = user_manager.get_characters(user.user_id)
 
-    return render_template("characters.html", characters=characters, user=user)
+    return render_template("characters.html", characters=characters, user=user, max_points=MAX_POINTS)
 
 
 @app.route('/users/<string:username>/characters', methods=['POST'])
@@ -404,14 +404,23 @@ async def send_chat_message(username, char_name):
             ("\n".join(context_list) if context_list else "None of the context information was relevant for the narrative.")
         )
 
+    print(narrative_message)
+
     try:
-        ai_response_content = await chatbot_app(narrative_message)
+        response_content = await chatbot_app.ainvoke(
+            input={"messages": narrative_message, "language": "English"},
+            config=config,
+            recursion_limit=5
+        )
+
     except RuntimeError as e:
         print(f"Error in narrative_agent: {e}")
         return jsonify({"Error": "Narrative story creation failed"})
 
-    if not ai_response_content:
+    if not response_content:
         ai_response_content = "The narrative continues... (Response generation failed.)"
+    else:
+        ai_response_content = response_content["messages"][-1].content
 
     # Save AI response
     ai_message = ChatHistory(
@@ -453,8 +462,34 @@ def get_chat_history(username, char_name):
         ).order_by(ChatHistory.created.asc())
     ).scalars().all()
 
+    character_sheet= {
+        "name": character.char_name,
+        "strength": character.strength,
+        "dexterity": character.dexterity,
+        "constitution": character.constitution,
+        "intelligence": character.intelligence,
+        "wisdom": character.wisdom,
+        "charisma": character.charisma,
+        "personality": character.char_personality,
+        "backstory": character.char_backstory,
+        "appearance": character.char_appearance,
+        "proficiencies": character.char_proficiencies
+    }
+
+    character_details = "\n".join([f"-{key.title()}:{value}" for key, value in character_sheet.items()])
+
+    instructions = ("Instructions: Start the story now,"
+                    " introducing the character in a compelling way based on the provided details.")
+
+    full_prompt=(f"""
+    Character context:"The storys central character has the following attributes:" {character_details}\n
+    ------------
+    Instructions to follow for the first part of the story: {instructions}\n
+    """
+    )
+
     if not chat_history:
-        initial_message = [HumanMessage(content="Start the story.")]
+        initial_message = [HumanMessage(content=full_prompt)]
 
         response_state = chatbot_app.invoke(
             input={"messages": initial_message, "language": "English"},
@@ -475,18 +510,17 @@ def get_chat_history(username, char_name):
         db.session.add(ai_message)
         db.session.commit()
 
-        # Reload history chat
-        chat_history = db.session.execute(
-            select(ChatHistory).where(
-                (ChatHistory.thread_id == thread_id),
-            ).order_by(ChatHistory.created.asc())
-        ).scalars().all()
+        # Set the history to save only the ai message and not the starting prompt
+        history_json = [
+            {"role": ai_message.role, "messages": ai_message.message}
+        ]
 
     # Convert to JSON
-    history_json = [
-        {"role": msg.role, "messages": msg.message}
-        for msg in chat_history
-    ]
+    else:
+        history_json = [
+            {"role": msg.role, "messages": msg.message}
+            for msg in chat_history
+        ]
     # return history
     return jsonify(history_json)
 
@@ -495,6 +529,12 @@ def get_chat_history(username, char_name):
 def page_not_found(e):
     error_message = str(e)
     return render_template('404.html', error_message=error_message), 404
+
+
+@app.errorhandler(500)
+def llm_error(e):
+    error_message = str(e)
+    return render_template('500.html', error_message=error_message), 500
 
 
 @app.errorhandler(503)

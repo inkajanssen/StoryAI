@@ -47,6 +47,7 @@ system_prompt = ("""
             relevant appearance details and relevant proficiencies, if given, along with the history of the chat.
             Weave these elements into a description of the next scene and conclude with a new choice or action prompt
             for the player.
+            Always use the characters name and dont come up with a new one. 
             **Respond in the {language} language.**
             """
 )

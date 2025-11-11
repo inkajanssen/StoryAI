@@ -24,13 +24,13 @@
     <h3>Character Details</h3>
 
     <label for="appearance">Appearance:</label>
-    <textarea id="appearance" name="appearance" rows="4" placeholder="Describe your Characters Appearance"></textarea><br>
+    <textarea id="appearance" name="appearance" rows="4" placeholder="Describe your characters appearance"></textarea><br>
 
     <label for="personality">Personality:</label>
     <textarea id="personality" name="personality" rows="4" placeholder="Describe their personality, traits and ideals."></textarea><br>
 
     <label for="backstory">Backstory:</label>
-    <textarea id="backstory" name="backstory" rows="6" placeholder="Provide a brief history of your character."></textarea><br>
+    <textarea id="backstory" name="backstory" rows="6" placeholder="Provide a brief history of your character including a job or trade they have."></textarea><br>
 
     <label for="proficiencies">Proficiency:</label>
     <textarea id="proficiencies" name="proficiencies" rows="6" placeholder="Provide a few things your character is good at."></textarea><br>
@@ -38,7 +38,7 @@
     <hr>
 
     <h3> Attributes </h3>
-    <p> You have a total of <strong>10 extra points</strong> to spend among these attributes:</p>
+    <p> You have a total of <strong>{{max_points}} extra points</strong> to spend among these attributes:</p>
 
     <label for="strength">Strength:</label>
     <input type="number" id="strength" name="strength" value="8" min="8" max="18" required><br>
