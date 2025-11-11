@@ -54,11 +54,12 @@ def create_user():
     user = request.form.get('create_user')
 
     if not user:
-        flash(message="Failed to create user. Please try again")
+        message = "Failed to create user. Please try again"
+        flash(message, "error")
         return redirect(url_for('home'))
 
     message = user_manager.create_user(user)
-    flash(message)
+    flash(message, 'success')
 
     return redirect(url_for('home'))
 
@@ -95,7 +96,8 @@ def add_character(username):
     char_name = request.form.get('char_name').strip()
 
     if not user or not char_name:
-        flash(message=f"Error: Please try again. User:{user.username}, char_name={char_name}")
+        message = f"Error: Please try again. User:{user.username}, char_name={char_name}"
+        flash(message, 'error')
         return redirect(url_for('characters_of_user', username=user.username))
 
     try:
@@ -174,7 +176,8 @@ def add_character(username):
                   charisma=charisma
                   ))
 
-    flash(message=character)
+    message = f"{character.char_name} successfully created"
+    flash(message, 'success')
     return redirect(url_for('characters_of_user', username=user.username))
 
 

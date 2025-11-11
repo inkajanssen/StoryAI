@@ -20,6 +20,42 @@ body {
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
 }
 
+.flashes{
+margin: 20px;
+max-width: 650px;
+width: 90%;
+text-align: center;
+}
+
+.flashes li {
+padding: 10px 15 px;
+margin-bottom: 10px;
+border-radius: 4px;
+font-weight:bold;
+font-family:'Book Antiqua', Palatino, serif;
+box-shadow:0 2px 5px rgba(0,0,0,0.2);
+border: 1px solid
+}
+
+.flashes li.success{
+background-color: #e6f1e6;
+color: #38761d;
+border-color: #274e13;
+}
+
+.flashes li.error,
+.flashes li.danger {
+background-color: #f7e6e6;
+color: #8c2f1f;
+border-color:#58180e;
+}
+
+.flashes li.info {
+background-color: #fffbf0;
+color: #3b302c;
+border-color: #a8947f;
+}
+
 h1 {
     text-align: center;
     color: #58180e;
