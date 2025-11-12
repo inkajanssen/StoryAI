@@ -7,7 +7,7 @@ from .db import db
 from .users import User
 from .characters import Character
 
-# Define project root path relative to current file to find templates
+# Define the project root path relative to the current file to find templates
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 #if frontend is applied:
 # PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
